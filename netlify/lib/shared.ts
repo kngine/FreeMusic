@@ -1,4 +1,5 @@
 // Shared helpers for FreeTune Netlify Edge Functions (Deno runtime).
+// Lives outside edge-functions/ so Netlify does not treat it as a function entry.
 
 export const API = "https://music-api.gdstudio.xyz/api.php";
 export const FALLBACK_SOURCES = ["netease", "kuwo", "tencent", "migu", "kugou"];

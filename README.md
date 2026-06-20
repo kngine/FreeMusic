@@ -79,8 +79,8 @@ full-screen like a native app, with lock-screen / Control Center playback.
 server.py                       # local backend (zero-dependency Python)
 start.command                   # double-click launcher (macOS, local)
 netlify.toml                    # Netlify config (publish web/, edge functions)
+netlify/lib/shared.ts             #   API client + multi-source fallback (not an edge fn)
 netlify/edge-functions/         # Deno backend for Netlify
-  _shared.ts                    #   API client + multi-source fallback
   search.ts  url.ts  lyric.ts   #   JSON endpoints
   pic.ts     stream.ts          #   cover art + audio streaming proxy
 web/
@@ -94,4 +94,4 @@ web/
   any source.
 - Depends on a third-party public aggregator being up. If audio stops resolving,
   change the `API` constant in **both** `server.py` and
-  `netlify/edge-functions/_shared.ts` to another Meting-style endpoint.
+  `netlify/lib/shared.ts` to another Meting-style endpoint.

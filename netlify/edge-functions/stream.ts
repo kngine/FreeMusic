@@ -1,4 +1,4 @@
-import { cors, json, resolveWithFallback, UA } from "./_shared.ts";
+import { cors, json, resolveWithFallback, UA } from "../lib/shared.ts";
 
 export default async (request: Request): Promise<Response> => {
   const q = new URL(request.url).searchParams;

@@ -1,4 +1,4 @@
-import { apiGet, json } from "./_shared.ts";
+import { apiGet, json } from "../lib/shared.ts";
 
 export default async (request: Request): Promise<Response> => {
   const q = new URL(request.url).searchParams;
