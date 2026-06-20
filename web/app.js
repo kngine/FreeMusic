@@ -69,22 +69,74 @@ async function aggGet(params) {
   return r.json();
 }
 
+// Normalize an aggregator search item into our track shape (mirrors search.ts).
+function normalizeTrack(it, source) {
+  return {
+    id: it.id || it.url_id,
+    name: it.name,
+    artist: Array.isArray(it.artist) ? it.artist.join("/") : (it.artist || ""),
+    album: it.album || "",
+    pic_id: it.pic_id || "",
+    lyric_id: it.lyric_id || it.id,
+    source: it.source || source,
+  };
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Reliable search: hit the aggregator directly from the browser (listener IP,
+// avoids the datacenter-IP rate-limiting that made results flaky), retrying a
+// couple of times, then fall back to the server proxy.
+async function searchTracks(name, source) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const raw = await aggGet({ types: "search", source, name, count: "40", pages: "1" });
+      if (Array.isArray(raw) && raw.length) return raw.map((it) => normalizeTrack(it, source));
+    } catch {}
+    if (attempt < 2) await sleep(350 * (attempt + 1));
+  }
+  try {
+    const list = await api("/api/search", { name, source, count: 40, page: 1 });
+    if (Array.isArray(list) && list.length) return list;
+  } catch {}
+  return [];
+}
+
 async function doSearch(name) {
   const source = $("#source").value;
   $("#search-empty").classList.remove("show");
-  $("#results").innerHTML = '<div class="loading">搜索中…</div>';
-  try {
-    const list = await api("/api/search", { name, source, count: 40, page: 1 });
-    if (!list.length) {
-      $("#results").innerHTML = "";
-      const e = $("#search-empty"); e.classList.add("show");
-      e.querySelector("div:last-child").textContent = "没有结果，换个关键词或音乐源";
-      return;
-    }
-    renderList($("#results"), list);
-  } catch (e) {
-    $("#results").innerHTML = `<div class="loading">出错了：${escapeHtml(e.message)}</div>`;
+  $("#results").innerHTML = '<div class="loading">Searching…</div>';
+  const list = await searchTracks(name, source);
+  if (!list.length) {
+    $("#results").innerHTML = "";
+    const e = $("#search-empty"); e.classList.add("show");
+    e.querySelector("div:last-child").textContent = "No results — try another keyword or source";
+    saveLastSearch(name, source, []);
+    return;
   }
+  renderList($("#results"), list);
+  saveLastSearch(name, source, list);
+}
+
+// ----------------------------- persistence -------------------------------- //
+function saveLastSearch(query, source, results) {
+  try {
+    localStorage.setItem("freetune_search", JSON.stringify({ query, source, results }));
+  } catch {}
+}
+function loadLastSearch() {
+  try { return JSON.parse(localStorage.getItem("freetune_search") || "null"); }
+  catch { return null; }
+}
+function saveQueue() {
+  try {
+    localStorage.setItem("freetune_queue",
+      JSON.stringify({ queue: state.queue, index: state.index }));
+  } catch {}
+}
+function loadQueue() {
+  try { return JSON.parse(localStorage.getItem("freetune_queue") || "null"); }
+  catch { return null; }
 }
 
 // ----------------------------- covers ------------------------------------- //
@@ -115,7 +167,7 @@ function renderList(container, list) {
         <div class="row-title">${escapeHtml(t.name)}</div>
         <div class="row-sub">${escapeHtml(t.artist)}${t.album ? " · " + escapeHtml(t.album) : ""}</div>
       </div>
-      <button class="row-fav ${isFav(t) ? "on" : ""}" aria-label="收藏">${isFav(t) ? ICON.heartFill : ICON.heart}</button>`;
+      <button class="row-fav ${isFav(t) ? "on" : ""}" aria-label="Favorite">${isFav(t) ? ICON.heartFill : ICON.heart}</button>`;
     fillCover(row.querySelector(".row-art"), t, 120);
     row.addEventListener("click", (e) => {
       if (e.target.closest(".row-fav")) return;
@@ -149,8 +201,21 @@ function playFromList(list, i) {
   state.queue = list.slice();
   state.index = i;
   renderQueue();
+  saveQueue();
   playCurrent();
   if (window.matchMedia("(max-width:720px)").matches) openNP();
+}
+
+// Populate the now-playing UI (mini player + Now Playing) without starting
+// playback — used both before loading audio and when restoring a saved queue.
+function showNowPlayingMeta(t) {
+  $("#mini").hidden = false;
+  setText(["#mini-title", "#np-title"], t.name);
+  setText(["#mini-artist", "#np-artist"], t.artist);
+  fillCover([$("#mini-art"), $("#np-art")], t, 600);
+  setFavIcons(isFav(t));
+  highlightPlaying();
+  updateMediaSession(t);
 }
 
 async function playCurrent() {
@@ -159,14 +224,9 @@ async function playCurrent() {
   const br = $("#quality").value;
   const token = ++state.playToken;
 
-  $("#mini").hidden = false;
-  setText(["#mini-title", "#np-title"], t.name);
-  setText(["#mini-artist", "#np-artist"], t.artist);
-  fillCover([$("#mini-art"), $("#np-art")], t, 600);
-  setFavIcons(isFav(t));
-  highlightPlaying();
+  showNowPlayingMeta(t);
   loadLyrics(t);
-  updateMediaSession(t);
+  saveQueue();
 
   // Hybrid: prefer direct CDN URL (listener's IP), fall back to proxy.
   let directUrl = "";
@@ -193,12 +253,13 @@ audio.addEventListener("error", () => {
     audio.play().catch(() => {});
     return;
   }
-  toast(`「${t.name}」暂无可用音源，已跳过`);
+  toast(`No source for "${t.name}" — skipped`);
   setTimeout(next, 600);
 });
 
 function togglePlay() {
   if (!state.queue.length) return;
+  if (!audio.src) { playCurrent(); return; }  // restored queue, not loaded yet
   if (audio.paused) audio.play(); else audio.pause();
 }
 function next() {
@@ -282,7 +343,7 @@ async function fetchLyric(t) {
 async function loadLyrics(t) {
   state.lrc = []; state.lrcIdx = -1;
   const token = state.playToken;
-  $("#np-lyrics").innerHTML = '<div class="lrc-line">加载歌词…</div>';
+  $("#np-lyrics").innerHTML = '<div class="lrc-line">Loading lyrics…</div>';
   const d = await fetchLyric(t);
   if (token !== state.playToken) return; // track changed while fetching
   const main = parseLrc(d.lyric), tr = parseLrc(d.tlyric);
@@ -296,7 +357,7 @@ function renderLyrics() {
   const box = $("#np-lyrics");
   box.innerHTML = state.lrc.length
     ? state.lrc.map((l, i) => `<div class="lrc-line" data-i="${i}">${escapeHtml(l.text)}${l.tr ? `<div class="lrc-tr">${escapeHtml(l.tr)}</div>` : ""}</div>`).join("")
-    : '<div class="lrc-line">纯音乐 / 暂无歌词</div>';
+    : '<div class="lrc-line">Instrumental / no lyrics</div>';
 }
 function syncLyric(time) {
   if (!state.lrc.length) return;
@@ -322,7 +383,7 @@ function setFavIcons(on) {
 }
 function toggleFav(t) {
   if (isFav(t)) state.favs = state.favs.filter((f) => trackKey(f) !== trackKey(t));
-  else { state.favs.unshift(t); toast(`已添加到资料库`); }
+  else { state.favs.unshift(t); toast(`Added to Library`); }
   saveFavs();
   renderFavs();
   const cur = state.queue[state.index];
@@ -390,7 +451,7 @@ $("#np-mode").addEventListener("click", () => {
   const btn = $("#np-mode");
   btn.innerHTML = { list: ICON.repeat, shuffle: ICON.shuffle, repeat: ICON.repeat1 }[state.mode];
   btn.classList.toggle("active", state.mode !== "list");
-  toast({ list: "顺序播放", shuffle: "随机播放", repeat: "单曲循环" }[state.mode]);
+  toast({ list: "Play in order", shuffle: "Shuffle", repeat: "Repeat one" }[state.mode]);
 });
 
 // search input
@@ -434,6 +495,34 @@ async function updateMediaSession(t) {
   } catch {}
 }
 
-// init
+// ----------------------------- init / restore ----------------------------- //
+function restoreSearch() {
+  const s = loadLastSearch();
+  if (s && s.query) {
+    qInput.value = s.query;
+    $(".search-field").classList.toggle("has-text", !!s.query);
+    if (s.source && $("#source").querySelector(`option[value="${s.source}"]`)) {
+      $("#source").value = s.source;
+    }
+    if (Array.isArray(s.results) && s.results.length) {
+      renderList($("#results"), s.results);
+      return;
+    }
+  }
+  $("#search-empty").classList.add("show");
+}
+
+function restoreQueue() {
+  const q = loadQueue();
+  if (q && Array.isArray(q.queue) && q.queue.length) {
+    state.queue = q.queue;
+    state.index = Math.min(Math.max(q.index || 0, 0), q.queue.length - 1);
+    const t = state.queue[state.index];
+    if (t) showNowPlayingMeta(t);  // priming only; tap play to start
+  }
+}
+
 renderFavs();
-$("#search-empty").classList.add("show");
+restoreSearch();
+restoreQueue();
+switchView("library");  // open on the Favorites (library) page by default

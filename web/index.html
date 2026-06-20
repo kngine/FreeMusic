@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
@@ -22,55 +22,55 @@
       <!-- Search -->
       <section id="view-search" class="view active">
         <header class="page-head">
-          <h1>搜索</h1>
+          <h1>Find</h1>
         </header>
         <div class="search-row">
           <div class="search-field">
             <svg class="search-ic" viewBox="0 0 24 24"><path d="M10 4a6 6 0 014.9 9.46l4.82 4.82-1.42 1.42-4.82-4.82A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
             <input id="q" type="search" inputmode="search" enterkeyhint="search"
-                   placeholder="歌曲、艺人" autocomplete="off" autocapitalize="off" />
-            <button id="q-clear" class="q-clear" aria-label="清除">&times;</button>
+                   placeholder="Songs, artists" autocomplete="off" autocapitalize="off" />
+            <button id="q-clear" class="q-clear" aria-label="Clear">&times;</button>
           </div>
         </div>
         <div class="seg-row">
-          <select id="source" class="seg" aria-label="音乐源">
-            <option value="netease">网易云</option>
-            <option value="kuwo">酷我</option>
-            <option value="tencent">QQ音乐</option>
-            <option value="migu">咪咕</option>
-            <option value="kugou">酷狗</option>
+          <select id="source" class="seg" aria-label="Source">
+            <option value="netease">NetEase</option>
+            <option value="kuwo">Kuwo</option>
+            <option value="tencent">QQ Music</option>
+            <option value="migu">Migu</option>
+            <option value="kugou">Kugou</option>
           </select>
-          <select id="quality" class="seg" aria-label="音质">
+          <select id="quality" class="seg" aria-label="Quality">
             <option value="320">320k</option>
             <option value="192">192k</option>
             <option value="128">128k</option>
-            <option value="740">无损</option>
+            <option value="740">Lossless</option>
           </select>
         </div>
         <div id="results" class="list"></div>
         <div id="search-empty" class="placeholder">
           <div class="placeholder-ic">🎧</div>
-          <div>搜索你想听的音乐</div>
+          <div>Find the music you love</div>
         </div>
       </section>
 
       <!-- Queue -->
       <section id="view-queue" class="view">
-        <header class="page-head"><h1>播放队列</h1></header>
+        <header class="page-head"><h1>Playlist</h1></header>
         <div id="queue-list" class="list"></div>
         <div id="queue-empty" class="placeholder">
           <div class="placeholder-ic">📃</div>
-          <div>队列是空的</div>
+          <div>Your playlist is empty</div>
         </div>
       </section>
 
       <!-- Library / Favorites -->
       <section id="view-library" class="view">
-        <header class="page-head"><h1>资料库</h1></header>
+        <header class="page-head"><h1>Library</h1></header>
         <div id="favs-list" class="list"></div>
         <div id="favs-empty" class="placeholder">
           <div class="placeholder-ic">♥︎</div>
-          <div>点击歌曲上的爱心来收藏</div>
+          <div>Tap the heart on a song to save it</div>
         </div>
       </section>
     </main>
@@ -80,41 +80,41 @@
       <div id="mini-progress" class="mini-progress"></div>
       <img id="mini-art" class="mini-art" alt="" />
       <div class="mini-text">
-        <div id="mini-title" class="mini-title">未在播放</div>
+        <div id="mini-title" class="mini-title">Not playing</div>
         <div id="mini-artist" class="mini-artist"></div>
       </div>
-      <button id="mini-play" class="mini-btn" aria-label="播放/暂停"></button>
-      <button id="mini-next" class="mini-btn" aria-label="下一首"></button>
+      <button id="mini-play" class="mini-btn" aria-label="Play/Pause"></button>
+      <button id="mini-next" class="mini-btn" aria-label="Next"></button>
     </div>
 
     <!-- Bottom tab bar -->
     <nav class="tabbar">
       <button class="tab active" data-view="search">
         <svg viewBox="0 0 24 24"><path d="M10 4a6 6 0 014.9 9.46l4.82 4.82-1.42 1.42-4.82-4.82A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
-        <span>搜索</span>
+        <span>Find</span>
       </button>
       <button class="tab" data-view="queue">
         <svg viewBox="0 0 24 24"><path d="M3 5h18v2H3zm0 6h12v2H3zm0 6h12v2H3zm15-4l4 3-4 3z"/></svg>
-        <span>队列</span>
+        <span>Playlist</span>
       </button>
       <button class="tab" data-view="library">
         <svg viewBox="0 0 24 24"><path d="M12 21s-6.7-4.35-9.33-7.5C.9 11.27 1 8.5 3 6.8 4.7 5.4 7 5.7 8.4 7.2L12 11l3.6-3.8C17 5.7 19.3 5.4 21 6.8c2 1.7 2.1 4.47.33 6.7C18.7 16.65 12 21 12 21z"/></svg>
-        <span>资料库</span>
+        <span>Library</span>
       </button>
     </nav>
 
     <!-- Full-screen Now Playing -->
     <section id="np" class="np">
-      <div class="np-grabber-wrap"><button id="np-close" class="np-grabber" aria-label="收起"></button></div>
+      <div class="np-grabber-wrap"><button id="np-close" class="np-grabber" aria-label="Close"></button></div>
       <div class="np-art-wrap">
         <img id="np-art" class="np-art" alt="" />
       </div>
       <div class="np-head">
         <div class="np-titles">
-          <div id="np-title" class="np-title">未在播放</div>
+          <div id="np-title" class="np-title">Not playing</div>
           <div id="np-artist" class="np-artist"></div>
         </div>
-        <button id="np-fav" class="np-fav" aria-label="收藏"></button>
+        <button id="np-fav" class="np-fav" aria-label="Favorite"></button>
       </div>
 
       <div class="np-progress">
@@ -123,15 +123,15 @@
       </div>
 
       <div class="np-controls">
-        <button id="np-prev" class="np-ctl" aria-label="上一首"></button>
-        <button id="np-play" class="np-ctl np-play" aria-label="播放/暂停"></button>
-        <button id="np-next" class="np-ctl" aria-label="下一首"></button>
+        <button id="np-prev" class="np-ctl" aria-label="Previous"></button>
+        <button id="np-play" class="np-ctl np-play" aria-label="Play/Pause"></button>
+        <button id="np-next" class="np-ctl" aria-label="Next"></button>
       </div>
 
       <div class="np-foot">
-        <button id="np-mode" class="np-foot-btn" aria-label="播放模式"></button>
-        <button id="np-lyric-btn" class="np-foot-btn active" aria-label="歌词">歌词</button>
-        <button id="np-queue-btn" class="np-foot-btn" aria-label="队列"></button>
+        <button id="np-mode" class="np-foot-btn" aria-label="Repeat mode"></button>
+        <button id="np-lyric-btn" class="np-foot-btn active" aria-label="Lyrics">Lyrics</button>
+        <button id="np-queue-btn" class="np-foot-btn" aria-label="Playlist"></button>
       </div>
 
       <div id="np-lyrics" class="np-lyrics"></div>
