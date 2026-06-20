@@ -1,10 +1,9 @@
 # 🎵 FreeTune · 自由音乐
 
-A self-hosted, installable music web app that lets you search and stream free
-Chinese (and global) music again — even from the US, where QQ Music / Kugou /
-NetEase apps are geo-blocked. Looks and feels like QQ Music / NetEase Cloud Music.
+A self-hosted music web app that lets you search and stream free Chinese (and
+global) music again — even from the US, where QQ Music / Kugou / NetEase apps
+are geo-blocked. Looks and feels like QQ Music / NetEase Cloud Music.
 
-- 📱 **iPhone-ready PWA** — add to Home Screen, full-screen Now Playing, lock-screen controls
 - 🔀 Searches **NetEase / Kuwo / QQ音乐 / Migu / Kugou** with automatic cross-source fallback
 - 🎤 Synced lyrics, album art, favorites, queue
 - 🚀 Two ways to run: **locally** (Python, zero deps) or **deployed to Netlify** (edge functions)
@@ -35,7 +34,7 @@ Or double-click **`start.command`** in Finder.
 
 ---
 
-## Option B — Deploy to Netlify (recommended for iPhone use)
+## Option B — Deploy to Netlify
 
 The backend is implemented as **Netlify Edge Functions** (Deno) so no server is
 needed — the same `/api/*` and `/stream` routes work in the cloud.
@@ -44,7 +43,7 @@ needed — the same `/api/*` and `/stream` routes work in the cloud.
 1. Go to <https://app.netlify.com/drop>
 2. Drag the entire **`Music`** folder (it must include `netlify.toml`,
    `netlify/`, and `web/`) onto the page.
-3. Done — open the generated `*.netlify.app` URL on your iPhone.
+3. Done — open the generated `*.netlify.app` URL.
 
 **Via Git / CLI:**
 ```bash
@@ -55,21 +54,16 @@ npx netlify-cli deploy --prod
 Netlify auto-detects `netlify.toml`: it publishes `web/` and loads the edge
 functions in `netlify/edge-functions/`. No build command required.
 
-### Add to iPhone Home Screen
-On the deployed site in Safari: **Share → Add to Home Screen**. It launches
-full-screen like a native app, with lock-screen / Control Center playback.
-
 ---
 
 ## Using it
 
-- **Search**: type a song/artist, press Enter (or the search key).
-- **Source / Quality**: top bar dropdowns. If a song won't play, the backend
+- **Search**: type a song/artist, press Enter.
+- **Source / Quality**: left-sidebar dropdowns. If a song won't play, the backend
   auto-tries the other sources; you can also switch the source manually.
-- **Mobile**: tap the bottom mini-player to open the full-screen Now Playing
-  screen (swipe down to close). Bottom tabs switch Search / Queue / Favorites.
-- **Favorites**: tap 🤍 (stored locally in your browser).
-- **Desktop keys**: Space = play/pause, ← / → = prev / next.
+- **Favorites**: click 🤍 on any track (stored locally in your browser).
+- **Lyrics**: synced lyrics show on the right; toggle with the "词" button.
+- **Keys**: Space = play/pause, ← / → = prev / next.
 
 ---
 
@@ -85,7 +79,6 @@ netlify/edge-functions/         # Deno backend for Netlify
   pic.ts     stream.ts          #   cover art + audio streaming proxy
 web/
   index.html  styles.css  app.js
-  manifest.json  icon.svg       # PWA assets
 ```
 
 ## Notes / limitations

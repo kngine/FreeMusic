@@ -2,24 +2,14 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FreeTune · 自由音乐</title>
-
-  <!-- PWA / iOS web-app -->
-  <meta name="theme-color" content="#0a0e0c" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="FreeTune" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icon.svg" />
-  <link rel="icon" href="icon.svg" />
-
   <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B5%3C/text%3E%3C/svg%3E" />
 </head>
 <body>
   <div id="app">
-    <!-- Sidebar (desktop) -->
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-logo">🎵</span>
@@ -35,6 +25,24 @@
         <button class="nav-item" data-view="favs">💚 我喜欢 Favorites</button>
       </nav>
 
+      <div class="source-box">
+        <label>音乐源 Source</label>
+        <select id="source">
+          <option value="netease">网易云 NetEase</option>
+          <option value="kuwo">酷我 Kuwo</option>
+          <option value="tencent">QQ音乐 Tencent</option>
+          <option value="migu">咪咕 Migu</option>
+          <option value="kugou">酷狗 Kugou</option>
+        </select>
+        <label>音质 Quality</label>
+        <select id="quality">
+          <option value="320">320 kbps</option>
+          <option value="192">192 kbps</option>
+          <option value="128">128 kbps</option>
+          <option value="740">无损 FLAC</option>
+        </select>
+      </div>
+
       <div class="sidebar-foot">
         自动跨源回退已开启<br/>auto multi-source fallback
       </div>
@@ -44,45 +52,26 @@
     <main class="main">
       <header class="topbar">
         <div class="search-wrap">
-          <input id="q" type="search" inputmode="search" enterkeyhint="search"
-                 placeholder="搜索歌曲、歌手…  Search" autocomplete="off" autocapitalize="off" />
-          <button id="search-btn" aria-label="搜索">搜索</button>
-        </div>
-        <div class="controls-row">
-          <label class="ctl">
-            <span>音乐源</span>
-            <select id="source">
-              <option value="netease">网易云 NetEase</option>
-              <option value="kuwo">酷我 Kuwo</option>
-              <option value="tencent">QQ音乐 Tencent</option>
-              <option value="migu">咪咕 Migu</option>
-              <option value="kugou">酷狗 Kugou</option>
-            </select>
-          </label>
-          <label class="ctl">
-            <span>音质</span>
-            <select id="quality">
-              <option value="320">320k</option>
-              <option value="192">192k</option>
-              <option value="128">128k</option>
-              <option value="740">FLAC</option>
-            </select>
-          </label>
+          <input id="q" type="text" placeholder="搜索歌曲、歌手…  Search songs or artists" autocomplete="off" />
+          <button id="search-btn">搜索</button>
         </div>
       </header>
 
       <section class="content">
+        <!-- Search / list view -->
         <div id="view-search" class="view active">
-          <h2 id="list-title">输入歌名开始聆听</h2>
+          <h2 id="list-title">热门推荐 · 试试搜索你喜欢的歌</h2>
           <div id="results" class="track-list"></div>
           <div id="empty" class="empty">输入歌名开始聆听 🎶</div>
         </div>
 
+        <!-- Queue view -->
         <div id="view-queue" class="view">
           <h2>播放列表 Queue</h2>
           <div id="queue-list" class="track-list"></div>
         </div>
 
+        <!-- Favorites view -->
         <div id="view-favs" class="view">
           <h2>我喜欢的音乐 Favorites</h2>
           <div id="favs-list" class="track-list"></div>
@@ -90,7 +79,7 @@
       </section>
     </main>
 
-    <!-- Lyric panel (desktop) -->
+    <!-- Now-playing lyric panel -->
     <aside id="lyric-panel" class="lyric-panel">
       <div class="lp-cover-wrap">
         <img id="lp-cover" class="lp-cover" alt="" />
@@ -101,38 +90,9 @@
     </aside>
   </div>
 
-  <!-- Full-screen Now Playing sheet (mobile) -->
-  <section id="np" class="np">
-    <header class="np-top">
-      <button id="np-close" class="np-close" aria-label="收起">⌄</button>
-      <div class="np-source">正在播放</div>
-      <button id="np-fav" class="np-fav" aria-label="收藏">🤍</button>
-    </header>
-    <div class="np-art-wrap">
-      <img id="np-cover" class="np-cover" alt="" />
-    </div>
-    <div class="np-meta">
-      <div id="np-title" class="np-title">未在播放</div>
-      <div id="np-artist" class="np-artist"></div>
-    </div>
-    <div class="lyrics np-lyrics"></div>
-    <div class="np-progress">
-      <span id="np-cur">0:00</span>
-      <input id="np-seek" type="range" min="0" max="1000" value="0" />
-      <span id="np-dur">0:00</span>
-    </div>
-    <div class="np-controls">
-      <button id="np-mode" class="icon-btn" aria-label="模式">🔁</button>
-      <button id="np-prev" class="icon-btn" aria-label="上一首">⏮</button>
-      <button id="np-play" class="play-btn np-play" aria-label="播放/暂停">▶</button>
-      <button id="np-next" class="icon-btn" aria-label="下一首">⏭</button>
-      <button id="np-list" class="icon-btn" aria-label="列表">📜</button>
-    </div>
-  </section>
-
   <!-- Player bar -->
   <footer class="player">
-    <div class="player-info" id="bar-open">
+    <div class="player-info">
       <img id="bar-cover" class="bar-cover" alt="" />
       <div class="bar-meta">
         <div id="bar-title" class="bar-title">FreeTune</div>
@@ -160,22 +120,9 @@
       <span class="vol-ic">🔊</span>
       <input id="vol" type="range" min="0" max="100" value="90" />
     </div>
-
-    <div id="mini-controls">
-      <button id="bar-prev" class="icon-btn" aria-label="上一首">⏮</button>
-      <button id="bar-play" class="play-btn" aria-label="播放/暂停">▶</button>
-      <button id="bar-next" class="icon-btn" aria-label="下一首">⏭</button>
-    </div>
   </footer>
 
-  <!-- Bottom tab bar (mobile) -->
-  <nav class="tabbar">
-    <button class="tab active" data-view="search">🔍<span>搜索</span></button>
-    <button class="tab" data-view="queue">📜<span>列表</span></button>
-    <button class="tab" data-view="favs">💚<span>喜欢</span></button>
-  </nav>
-
-  <audio id="audio" preload="metadata"></audio>
+  <audio id="audio"></audio>
   <div id="toast" class="toast"></div>
 
   <script src="app.js"></script>
