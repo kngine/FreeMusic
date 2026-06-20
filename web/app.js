@@ -58,6 +58,17 @@ async function api(path, params) {
   return r.json();
 }
 
+// Public aggregator. The browser can call it directly (CORS: *), so metadata
+// is fetched from the listener's own IP — this dodges the datacenter-IP blocks
+// that make our server-side calls come back empty when deployed (e.g. Netlify).
+// Keep this in sync with `API` in server.py / netlify/lib/shared.ts.
+const AGG = "https://music-api.gdstudio.xyz/api.php";
+async function aggGet(params) {
+  const r = await fetch(AGG + "?" + new URLSearchParams(params).toString());
+  if (!r.ok) throw new Error("agg " + r.status);
+  return r.json();
+}
+
 async function doSearch(name) {
   const source = $("#source").value;
   $("#search-empty").classList.remove("show");
@@ -253,18 +264,33 @@ function parseLrc(raw) {
   }
   return out.sort((a, b) => a.t - b.t);
 }
+async function fetchLyric(t) {
+  const id = t.lyric_id || t.id;
+  // 1) Direct from aggregator (listener's IP) — works even when deployed.
+  try {
+    const d = await aggGet({ types: "lyric", source: t.source, id });
+    if (d && (d.lyric || d.tlyric)) return d;
+  } catch {}
+  // 2) Fall back to our backend proxy.
+  try {
+    const d = await api("/api/lyric", { source: t.source, id });
+    if (d && (d.lyric || d.tlyric)) return d;
+  } catch {}
+  return { lyric: "", tlyric: "" };
+}
+
 async function loadLyrics(t) {
   state.lrc = []; state.lrcIdx = -1;
+  const token = state.playToken;
   $("#np-lyrics").innerHTML = '<div class="lrc-line">加载歌词…</div>';
-  try {
-    const d = await api("/api/lyric", { source: t.source, id: t.lyric_id || t.id });
-    const main = parseLrc(d.lyric), tr = parseLrc(d.tlyric);
-    if (tr.length) main.forEach((l) => {
-      const m = tr.find((x) => Math.abs(x.t - l.t) < 0.5); if (m) l.tr = m.text;
-    });
-    state.lrc = main;
-    renderLyrics();
-  } catch { $("#np-lyrics").innerHTML = '<div class="lrc-line">暂无歌词</div>'; }
+  const d = await fetchLyric(t);
+  if (token !== state.playToken) return; // track changed while fetching
+  const main = parseLrc(d.lyric), tr = parseLrc(d.tlyric);
+  if (tr.length) main.forEach((l) => {
+    const m = tr.find((x) => Math.abs(x.t - l.t) < 0.5); if (m) l.tr = m.text;
+  });
+  state.lrc = main;
+  renderLyrics();
 }
 function renderLyrics() {
   const box = $("#np-lyrics");
