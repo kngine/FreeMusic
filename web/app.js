@@ -8,6 +8,8 @@ const state = {
   favs: loadFavs(),
   lrc: [],            // [{t, text, tr}]
   lrcIdx: -1,
+  playToken: 0,       // guards against fast track switching
+  playStage: null,    // "direct" | "proxy" — what the current audio.src is
 };
 
 const $ = (s) => document.querySelector(s);
@@ -135,10 +137,18 @@ function playFromList(list, i) {
   playCurrent();
 }
 
+function proxyStreamUrl(t, br) {
+  return "/stream?" + new URLSearchParams({
+    source: t.source, id: t.id, br,
+    name: t.name, artist: t.artist,
+  }).toString();
+}
+
 async function playCurrent() {
   const t = state.queue[state.index];
   if (!t) return;
   const br = $("#quality").value;
+  const token = ++state.playToken;
 
   $("#bar-title").textContent = t.name;
   $("#bar-artist").textContent = "加载中… " + t.artist;
@@ -150,24 +160,44 @@ async function playCurrent() {
   highlightPlaying();
   loadLyrics(t);
 
-  // Stream through our backend (handles fallback + CORS + range)
-  const streamUrl = "/stream?" + new URLSearchParams({
-    source: t.source, id: t.id, br,
-    name: t.name, artist: t.artist,
-  }).toString();
-
-  audio.src = streamUrl;
+  // Hybrid playback: prefer the direct CDN URL so the audio bytes are fetched
+  // by the listener's own browser/IP (works around cloud-IP blocking when
+  // deployed). Fall back to the server proxy if direct playback fails.
+  let directUrl = "";
   try {
-    await audio.play();
-    $("#bar-artist").textContent = t.artist;
-  } catch (e) {
-    $("#bar-artist").textContent = t.artist;
+    const d = await api("/api/url", {
+      source: t.source, id: t.id, br, name: t.name, artist: t.artist,
+    });
+    if (d && d.ok && d.url) directUrl = d.url;
+  } catch {}
+  if (token !== state.playToken) return; // user already switched tracks
+
+  // Avoid mixed-content: an https page cannot load an http:// media URL.
+  const pageHttps = location.protocol === "https:";
+  const directUsable = directUrl && !(pageHttps && directUrl.startsWith("http:"));
+
+  if (directUsable) {
+    state.playStage = "direct";
+    audio.src = directUrl;
+  } else {
+    state.playStage = "proxy";
+    audio.src = proxyStreamUrl(t, br);
   }
+  try { await audio.play(); } catch (e) {}
+  $("#bar-artist").textContent = t.artist;
 }
 
 audio.addEventListener("error", () => {
   const t = state.queue[state.index];
-  if (t) toast(`「${t.name}」暂无可用音源，已跳过`);
+  if (!t) return;
+  // Direct CDN playback failed (hotlink/referer/region) → retry via proxy.
+  if (state.playStage === "direct") {
+    state.playStage = "proxy";
+    audio.src = proxyStreamUrl(t, $("#quality").value);
+    audio.play().catch(() => {});
+    return;
+  }
+  toast(`「${t.name}」暂无可用音源，已跳过`);
   setTimeout(next, 600);
 });
 
