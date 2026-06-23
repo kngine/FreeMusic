@@ -395,6 +395,55 @@ function renderFavs() {
   $("#favs-empty").classList.remove("show");
   renderList(box, state.favs);
 }
+
+// ----------------------------- import / export favorites ------------------ //
+function exportFavs() {
+  if (!state.favs.length) { toast("No favorites to export"); return; }
+  const payload = {
+    app: "FreeTune", type: "favorites", version: 1,
+    exportedAt: new Date().toISOString(),
+    favorites: state.favs,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `freetune-favorites-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`Exported ${state.favs.length} song${state.favs.length > 1 ? "s" : ""}`);
+}
+
+function importFavs(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let list;
+    try {
+      const data = JSON.parse(reader.result);
+      list = Array.isArray(data) ? data : data.favorites;
+    } catch { toast("Couldn't read that file"); return; }
+    if (!Array.isArray(list)) { toast("Not a valid favorites file"); return; }
+
+    const existing = new Set(state.favs.map(trackKey));
+    let added = 0;
+    for (const t of list) {
+      if (!t || !t.id || !t.source) continue;
+      const key = trackKey(t);
+      if (existing.has(key)) continue;
+      existing.add(key);
+      state.favs.push(t);
+      added++;
+    }
+    saveFavs();
+    renderFavs();
+    toast(added ? `Imported ${added} new song${added > 1 ? "s" : ""}` : "Already up to date");
+  };
+  reader.onerror = () => toast("Couldn't read that file");
+  reader.readAsText(file);
+}
 function renderQueue() {
   const box = $("#queue-list");
   if (!state.queue.length) { box.innerHTML = ""; $("#queue-empty").classList.add("show"); return; }
@@ -462,6 +511,15 @@ qInput.addEventListener("keydown", (e) => {
 });
 $("#q-clear").addEventListener("click", () => {
   qInput.value = ""; $(".search-field").classList.remove("has-text"); qInput.focus();
+});
+
+// import / export favorites
+$("#fav-export").addEventListener("click", exportFavs);
+$("#fav-import").addEventListener("click", () => $("#fav-file").click());
+$("#fav-file").addEventListener("change", (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (file) importFavs(file);
+  e.target.value = "";  // allow re-importing the same file
 });
 
 // keyboard (desktop)

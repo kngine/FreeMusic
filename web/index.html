@@ -66,7 +66,14 @@
 
       <!-- Library / Favorites -->
       <section id="view-library" class="view">
-        <header class="page-head"><h1>Library</h1></header>
+        <header class="page-head lib-head">
+          <h1>Library</h1>
+          <div class="lib-tools">
+            <button id="fav-export" class="lib-tool" aria-label="Export favorites">Export</button>
+            <button id="fav-import" class="lib-tool" aria-label="Import favorites">Import</button>
+          </div>
+        </header>
+        <input id="fav-file" type="file" accept="application/json,.json" hidden />
         <div id="favs-list" class="list"></div>
         <div id="favs-empty" class="placeholder">
           <div class="placeholder-ic">♥︎</div>

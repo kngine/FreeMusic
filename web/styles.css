@@ -54,6 +54,15 @@ svg { width: 100%; height: 100%; fill: currentColor; display: block; }
 .page-head { padding: 14px 0 8px; }
 .page-head h1 { font-size: 30px; font-weight: 800; letter-spacing: -.5px; }
 
+/* library header tools (low-profile import/export) */
+.lib-head { display: flex; align-items: flex-end; justify-content: space-between; }
+.lib-tools { display: flex; gap: 8px; padding-bottom: 6px; }
+.lib-tool {
+  background: none; border: none; color: var(--muted);
+  font-size: 13px; font-weight: 600; padding: 4px 6px; border-radius: 6px;
+}
+.lib-tool:active { color: var(--text); background: var(--surface); }
+
 /* search field */
 .search-row { position: sticky; top: 0; z-index: 2; background: var(--bg); padding-bottom: 8px; }
 .search-field {
