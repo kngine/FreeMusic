@@ -197,6 +197,41 @@ function proxyStreamUrl(t, br) {
   }).toString();
 }
 
+// Resolved-URL cache so we can prefetch the next track and switch synchronously.
+// Background (locked-screen) playback on iOS only keeps audio routed to the
+// speaker if the next track's src is set + play() is called WITHOUT an async
+// gap; awaiting a network request at transition time makes it advance silently.
+const urlCache = new Map(); // key -> Promise<{url, stage}> (with _done/_value)
+function urlKey(t, br) { return `${t.source}:${t.id}:${br}`; }
+
+function resolveUrl(t, br) {
+  const key = urlKey(t, br);
+  if (urlCache.has(key)) return urlCache.get(key);
+  if (urlCache.size > 60) urlCache.clear();
+  const p = (async () => {
+    let directUrl = "";
+    try {
+      const d = await api("/api/url", { source: t.source, id: t.id, br, name: t.name, artist: t.artist });
+      if (d && d.ok && d.url) directUrl = d.url;
+    } catch {}
+    const pageHttps = location.protocol === "https:";
+    const directUsable = directUrl && !(pageHttps && directUrl.startsWith("http:"));
+    return directUsable ? { url: directUrl, stage: "direct" } : { url: proxyStreamUrl(t, br), stage: "proxy" };
+  })();
+  p.then((v) => { p._done = true; p._value = v; }, () => urlCache.delete(key));
+  urlCache.set(key, p);
+  return p;
+}
+function cachedUrl(t, br) {
+  const p = urlCache.get(urlKey(t, br));
+  return p && p._done ? p._value : null;
+}
+function prefetchNext() {
+  if (!state.queue.length || state.mode === "shuffle") return;
+  const t = state.queue[(state.index + 1) % state.queue.length];
+  if (t) resolveUrl(t, $("#quality").value); // fire-and-forget; fills cache
+}
+
 function playFromList(list, i) {
   state.queue = list.slice();
   state.index = i;
@@ -227,21 +262,27 @@ async function playCurrent() {
   showNowPlayingMeta(t);
   loadLyrics(t);
   saveQueue();
+  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
 
-  // Hybrid: prefer direct CDN URL (listener's IP), fall back to proxy.
-  let directUrl = "";
-  try {
-    const d = await api("/api/url", { source: t.source, id: t.id, br, name: t.name, artist: t.artist });
-    if (d && d.ok && d.url) directUrl = d.url;
-  } catch {}
+  // Fast path: next track's URL was prefetched while the previous one played.
+  // Set src + play() synchronously (no await) so background transitions keep
+  // audio routed to the speaker on iOS.
+  const ready = cachedUrl(t, br);
+  if (ready) {
+    state.playStage = ready.stage;
+    audio.src = ready.url;
+    audio.play().catch(() => {});
+    prefetchNext();
+    return;
+  }
+
+  // Slow path (first play / cache miss): resolve, then play.
+  const res = await resolveUrl(t, br);
   if (token !== state.playToken) return;
-
-  const pageHttps = location.protocol === "https:";
-  const directUsable = directUrl && !(pageHttps && directUrl.startsWith("http:"));
-  if (directUsable) { state.playStage = "direct"; audio.src = directUrl; }
-  else { state.playStage = "proxy"; audio.src = proxyStreamUrl(t, br); }
-
+  state.playStage = res.stage;
+  audio.src = res.url;
   try { await audio.play(); } catch {}
+  prefetchNext();
 }
 
 audio.addEventListener("error", () => {
@@ -286,8 +327,14 @@ function setPlayIcons(playing) {
   $("#np-play").innerHTML = playing ? ICON.pause : ICON.play;
   $("#np").classList.toggle("playing", playing);
 }
-audio.addEventListener("play", () => setPlayIcons(true));
-audio.addEventListener("pause", () => setPlayIcons(false));
+audio.addEventListener("play", () => {
+  setPlayIcons(true);
+  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
+});
+audio.addEventListener("pause", () => {
+  setPlayIcons(false);
+  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
+});
 
 audio.addEventListener("timeupdate", () => {
   const d = audio.duration || 0;
@@ -298,6 +345,18 @@ audio.addEventListener("timeupdate", () => {
   if (!seek._dragging) { seek.value = pct; seek.style.backgroundSize = (pct / 10) + "% 100%"; }
   $("#mini-progress").style.width = (pct / 10) + "%";
   syncLyric(audio.currentTime);
+
+  // Prefetch the next track's URL before this one ends, so the background
+  // transition can switch sources synchronously (no silent next-track bug).
+  if (d && d - audio.currentTime < 45) prefetchNext();
+
+  if ("mediaSession" in navigator && navigator.mediaSession.setPositionState && d) {
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: d, position: audio.currentTime, playbackRate: audio.playbackRate || 1,
+      });
+    } catch {}
+  }
 });
 
 (() => {
